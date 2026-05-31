@@ -25,15 +25,19 @@ function normalizePdfText(value: string) {
 }
 
 function configurePdfWorker() {
-  const workerPath = join(
-    process.cwd(),
-    "node_modules",
-    "pdf-parse",
-    "dist",
-    "worker",
-    "pdf.worker.mjs",
-  );
-  const workerData = readFileSync(workerPath).toString("base64");
+  try {
+    const workerPath = join(
+      process.cwd(),
+      "node_modules",
+      "pdf-parse",
+      "dist",
+      "worker",
+      "pdf.worker.mjs",
+    );
+    const workerData = readFileSync(workerPath).toString("base64");
 
-  PDFParse.setWorker(`data:text/javascript;base64,${workerData}`);
+    PDFParse.setWorker(`data:text/javascript;base64,${workerData}`);
+  } catch (error) {
+    console.error("PDF worker configuration failed", error);
+  }
 }
