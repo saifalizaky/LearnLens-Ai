@@ -57,3 +57,5 @@ Jangan masukkan `.env.local` ke GitHub atau source code publik.
 ## Catatan Penting
 
 Vercel serverless tidak cocok untuk menyimpan file runtime di `.data`. Karena itu, pada cloud deployment wajib isi env Supabase agar data dokumen dan aktivitas tersimpan di database cloud. Jika env Supabase kosong, aplikasi tetap bisa jalan lokal dengan fallback file JSON.
+
+Upload PDF pada Vercel dibatasi maksimal 4 MB. Jika file lebih besar, kompres PDF terlebih dahulu atau pecah dokumen menjadi beberapa bagian.

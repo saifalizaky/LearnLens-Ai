@@ -38,6 +38,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 
 Jika `DASHSCOPE_API_KEY` belum diisi, aplikasi tetap berjalan dengan fallback ekstraktif dari dokumen yang diupload.
 
+Pada deployment Vercel, upload PDF dibatasi maksimal 4 MB agar aman terhadap limit request body platform.
+
 ## Routes
 
 ```text

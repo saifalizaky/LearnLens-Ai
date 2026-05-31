@@ -22,6 +22,8 @@ type UploadResult = {
   };
 };
 
+type UploadResponse = (UploadResult & { error?: string }) | { error: string };
+
 export function UploadPanel() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,9 +55,13 @@ export function UploadPanel() {
         body: formData,
       });
 
-      const data = (await response.json()) as UploadResult & { error?: string };
+      const data = await readUploadResponse(response);
 
       if (!response.ok) {
+        throw new Error(data.error ?? "Upload gagal diproses.");
+      }
+
+      if (!("document" in data)) {
         throw new Error(data.error ?? "Upload gagal diproses.");
       }
 
@@ -161,4 +167,34 @@ export function UploadPanel() {
       ) : null}
     </section>
   );
+}
+
+async function readUploadResponse(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.includes("application/json")) {
+    return (await response.json()) as UploadResponse;
+  }
+
+  const text = await response.text();
+
+  if (response.status === 413) {
+    return {
+      error:
+        "Ukuran PDF terlalu besar untuk deployment Vercel. Gunakan PDF maksimal 4 MB atau kompres file dulu.",
+    };
+  }
+
+  if (text.trim().startsWith("<!DOCTYPE")) {
+    return {
+      error:
+        "Server deployment mengembalikan halaman error, bukan JSON. Cek Environment Variables dan Function Logs di Vercel.",
+    };
+  }
+
+  return {
+    error:
+      text.trim() ||
+      `Upload gagal diproses. Server mengembalikan status ${response.status}.`,
+  };
 }
