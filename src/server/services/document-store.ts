@@ -5,6 +5,9 @@ import { getSupabaseAdminClient } from "@/server/services/supabase";
 
 const storePath = join(process.cwd(), ".data", "documents.json");
 const documentsTable = "documents";
+const documentListColumns =
+  "id, session_id, title, category, file_name, pages, created_at, status, source, summary, key_points, technical_terms";
+const documentFullColumns = `${documentListColumns}, extracted_text`;
 
 export async function getDocuments(sessionId: string) {
   const supabase = getSupabaseAdminClient();
@@ -12,7 +15,7 @@ export async function getDocuments(sessionId: string) {
   if (supabase) {
     const { data, error } = await supabase
       .from(documentsTable)
-      .select("*")
+      .select(documentListColumns)
       .eq("session_id", sessionId)
       .order("created_at", { ascending: false });
 
@@ -34,6 +37,23 @@ export async function getDocuments(sessionId: string) {
 }
 
 export async function getDocumentById(id: string, sessionId: string) {
+  const supabase = getSupabaseAdminClient();
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .from(documentsTable)
+      .select(documentFullColumns)
+      .eq("id", id)
+      .eq("session_id", sessionId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return data ? documentFromRow(data) : undefined;
+  }
+
   const documents = await getDocuments(sessionId);
 
   return documents.find((document) => document.id === id);
@@ -75,7 +95,7 @@ export async function deleteDocument(id: string, sessionId: string) {
   if (supabase) {
     const { data, error } = await supabase
       .from(documentsTable)
-      .select("*")
+      .select(documentListColumns)
       .eq("id", id)
       .eq("session_id", sessionId)
       .maybeSingle();
@@ -196,7 +216,7 @@ type DocumentRow = {
   summary: string;
   key_points: unknown;
   technical_terms: unknown;
-  extracted_text: string;
+  extracted_text?: string | null;
 };
 
 function documentToRow(document: CloudDocument): DocumentRow {
@@ -231,7 +251,7 @@ function documentFromRow(row: DocumentRow): CloudDocument {
     summary: row.summary,
     keyPoints: asStringArray(row.key_points),
     technicalTerms: asTechnicalTerms(row.technical_terms),
-    extractedText: row.extracted_text,
+    extractedText: row.extracted_text ?? "",
   };
 }
 

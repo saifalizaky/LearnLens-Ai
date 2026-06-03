@@ -7,6 +7,7 @@ import { answerQuestion } from "@/server/services/llm";
 import { getSessionIdFromRequest } from "@/server/services/session";
 
 export const runtime = "nodejs";
+export const preferredRegion = "sin1";
 
 const chatRequestSchema = z.object({
   documentId: z.string().min(1),

@@ -174,10 +174,7 @@ export function buildProgressDetails(
   const averageScore = scores.length
     ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
     : 0;
-  const totalWords = documents.reduce(
-    (sum, document) => sum + countWords(document.extractedText),
-    0,
-  );
+  const totalPages = documents.reduce((sum, document) => sum + document.pages, 0);
 
   return [
     {
@@ -201,9 +198,9 @@ export function buildProgressDetails(
       detail: scores.length ? `${scores.length} quiz selesai.` : "Belum ada quiz selesai.",
     },
     {
-      label: "Total Kata",
-      value: totalWords.toLocaleString("id-ID"),
-      detail: "Jumlah kata dari semua dokumen.",
+      label: "Total Halaman",
+      value: totalPages.toLocaleString("id-ID"),
+      detail: "Jumlah halaman dari semua dokumen.",
     },
   ];
 }

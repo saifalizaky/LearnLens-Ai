@@ -32,6 +32,7 @@ import {
 import { getCurrentSessionId } from "@/server/services/session";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "sin1";
 
 export default async function StudyHubPage() {
   const sessionId = await getCurrentSessionId();

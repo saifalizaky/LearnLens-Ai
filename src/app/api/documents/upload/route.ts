@@ -7,6 +7,7 @@ import { extractPdfDocument } from "@/server/services/pdf";
 import { getSessionIdFromRequest } from "@/server/services/session";
 
 export const runtime = "nodejs";
+export const preferredRegion = "sin1";
 export const maxDuration = 60;
 
 const maxFileSize = 4 * 1024 * 1024;

@@ -15,6 +15,7 @@ import { getDocuments } from "@/server/services/document-store";
 import { getCurrentSessionId } from "@/server/services/session";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "sin1";
 
 export default async function DocumentsPage() {
   const sessionId = await getCurrentSessionId();

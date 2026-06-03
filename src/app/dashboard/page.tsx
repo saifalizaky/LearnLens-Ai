@@ -22,6 +22,7 @@ import {
 import { getCurrentSessionId } from "@/server/services/session";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "sin1";
 
 const coverStyles = [
   "from-blue-950 via-cyan-900 to-zinc-950",

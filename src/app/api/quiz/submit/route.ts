@@ -4,6 +4,8 @@ import { recordActivity } from "@/server/services/activity-store";
 import { getDocumentById } from "@/server/services/document-store";
 import { getSessionIdFromRequest } from "@/server/services/session";
 
+export const preferredRegion = "sin1";
+
 const submitSchema = z.object({
   documentId: z.string().min(1),
   answers: z.array(

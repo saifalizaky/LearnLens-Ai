@@ -4,6 +4,7 @@ import { summarizeDocument } from "@/server/services/llm";
 import { getSessionIdFromRequest } from "@/server/services/session";
 
 export const runtime = "nodejs";
+export const preferredRegion = "sin1";
 
 export async function POST(
   request: Request,
