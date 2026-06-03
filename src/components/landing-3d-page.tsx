@@ -17,6 +17,7 @@ import { HoverButton } from "@/components/ui/hover-button";
 import { SplineScene } from "@/components/ui/splite";
 import { Spotlight } from "@/components/ui/spotlight";
 
+const heroTitle = "Belajar Lebih Cepat, Paham Lebih Dalam";
 const splineSceneUrl =
   "https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode";
 
@@ -37,6 +38,40 @@ const previewCards = [
     icon: GraduationCap,
   },
 ];
+
+function RevealHeadline({ title }: { title: string }) {
+  const words = title.split(" ");
+
+  return (
+    <h1
+      aria-label={title}
+      className="max-w-4xl text-4xl font-semibold leading-tight tracking-normal text-white sm:text-6xl lg:text-7xl"
+    >
+      <span aria-hidden="true">
+        {words.map((word, wordIndex) => (
+          <span
+            key={`${word}-${wordIndex}`}
+            className="mr-3 inline-block overflow-hidden pb-1 align-bottom last:mr-0 sm:mr-4"
+          >
+            <motion.span
+              className="inline-block"
+              initial={{ y: "110%", opacity: 0 }}
+              animate={{ y: "0%", opacity: 1 }}
+              transition={{
+                delay: 0.08 + wordIndex * 0.08,
+                type: "spring",
+                stiffness: 150,
+                damping: 24,
+              }}
+            >
+              {word}
+            </motion.span>
+          </span>
+        ))}
+      </span>
+    </h1>
+  );
+}
 
 export function Landing3DPage() {
   const previewRef = useRef<HTMLElement>(null);
@@ -71,9 +106,7 @@ export function Landing3DPage() {
           transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
           className="pointer-events-none relative z-10 mx-auto flex max-w-5xl flex-col items-center"
         >
-          <h1 className="max-w-4xl text-4xl font-semibold leading-tight tracking-normal text-white sm:text-6xl lg:text-7xl">
-            Taklukkan Dokumen Tebal dalam Hitungan Detik.
-          </h1>
+          <RevealHeadline title={heroTitle} />
           <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg">
             Nggak perlu lagi pusing baca ratusan halaman. Biarkan LearnLens AI
             yang membedah intisarinya, merangkum poin penting, dan membuatkan
