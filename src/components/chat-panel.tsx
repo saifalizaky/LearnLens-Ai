@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bot, Cpu, Loader2, Send } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown-content";
 import type { ChatModelOption } from "@/lib/ai-models";
 import type { ChatMessage } from "@/lib/types";
+
+const chatStorageVersion = 1;
+const chatStoragePrefix = "cloudtutor.chat.";
+
+type ChatDraft = {
+  messages: ChatMessage[];
+  question: string;
+};
 
 export function ChatPanel({
   documentId,
@@ -17,11 +25,44 @@ export function ChatPanel({
   modelOptions: ChatModelOption[];
   defaultModelId: string;
 }) {
+  const storageKey = `${chatStoragePrefix}${documentId}`;
   const [messages, setMessages] = useState(initialMessages);
   const [question, setQuestion] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const selectedModel =
     modelOptions.find((model) => model.id === defaultModelId) ?? modelOptions[0];
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      const draft = readChatDraft(storageKey);
+
+      if (draft) {
+        setMessages(draft.messages);
+        setQuestion(draft.question);
+      }
+
+      setIsDraftLoaded(true);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!isDraftLoaded) {
+      return;
+    }
+
+    writeChatDraft(storageKey, { messages, question });
+  }, [isDraftLoaded, messages, question, storageKey]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -163,4 +204,84 @@ export function ChatPanel({
       </form>
     </section>
   );
+}
+
+function readChatDraft(storageKey: string): ChatDraft | null {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return null;
+  }
+
+  try {
+    const rawDraft = storage.getItem(storageKey);
+
+    if (!rawDraft) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(rawDraft);
+
+    if (!isRecord(parsed)) {
+      storage.removeItem(storageKey);
+      return null;
+    }
+
+    const messages = Array.isArray(parsed.messages)
+      ? parsed.messages.filter(isChatMessage)
+      : [];
+    const question = typeof parsed.question === "string" ? parsed.question : "";
+
+    return messages.length || question.trim() ? { messages, question } : null;
+  } catch {
+    storage.removeItem(storageKey);
+    return null;
+  }
+}
+
+function writeChatDraft(storageKey: string, draft: ChatDraft) {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return;
+  }
+
+  try {
+    storage.setItem(
+      storageKey,
+      JSON.stringify({
+        version: chatStorageVersion,
+        updatedAt: new Date().toISOString(),
+        ...draft,
+      }),
+    );
+  } catch {
+    // Ignore storage quota and private browsing failures.
+  }
+}
+
+function getLocalStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function isChatMessage(value: unknown): value is ChatMessage {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    (value.role === "assistant" || value.role === "user") &&
+    typeof value.content === "string" &&
+    typeof value.createdAt === "string"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

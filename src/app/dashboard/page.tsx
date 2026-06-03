@@ -10,9 +10,9 @@ import { DashboardToolbar } from "@/components/dashboard-toolbar";
 import { resolveChatModel } from "@/lib/ai-models";
 import { truncateText } from "@/lib/utils";
 import {
+  deriveLearningTrend,
+  deriveRecentRealActivities,
   getActivities,
-  getLearningTrend,
-  getRecentRealActivities,
 } from "@/server/services/activity-store";
 import { getDocuments } from "@/server/services/document-store";
 import {
@@ -33,11 +33,9 @@ const coverStyles = [
 export default async function DashboardPage() {
   const sessionId = await getCurrentSessionId();
   const documents = await getDocuments(sessionId);
-  const [learningTrend, recentActivities, activities] = await Promise.all([
-    getLearningTrend(sessionId, documents),
-    getRecentRealActivities(sessionId, documents),
-    getActivities(sessionId),
-  ]);
+  const activities = await getActivities(sessionId);
+  const learningTrend = deriveLearningTrend(documents, activities);
+  const recentActivities = deriveRecentRealActivities(documents, activities);
   const recentDocuments = documents.slice(0, 4);
   const latestDocument = documents[0];
   const progressDetails = buildProgressDetails(documents, activities);

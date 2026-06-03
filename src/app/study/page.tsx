@@ -16,9 +16,9 @@ import { ActionItemsPanel } from "@/components/action-items-panel";
 import { FlashcardPanel } from "@/components/flashcard-panel";
 import { formatDate, truncateText } from "@/lib/utils";
 import {
+  deriveLearningTrend,
+  deriveRecentRealActivities,
   getActivities,
-  getLearningTrend,
-  getRecentRealActivities,
 } from "@/server/services/activity-store";
 import { getDocuments } from "@/server/services/document-store";
 import {
@@ -36,11 +36,9 @@ export const dynamic = "force-dynamic";
 export default async function StudyHubPage() {
   const sessionId = await getCurrentSessionId();
   const documents = await getDocuments(sessionId);
-  const [activities, learningTrend, recentActivities] = await Promise.all([
-    getActivities(sessionId),
-    getLearningTrend(sessionId, documents),
-    getRecentRealActivities(sessionId, documents),
-  ]);
+  const activities = await getActivities(sessionId);
+  const learningTrend = deriveLearningTrend(documents, activities);
+  const recentActivities = deriveRecentRealActivities(documents, activities);
   const latestDocument = documents[0];
   const progressDetails = buildProgressDetails(documents, activities);
   const weeklyActivities = learningTrend.reduce(
@@ -301,7 +299,10 @@ export default async function StudyHubPage() {
             </div>
           </div>
           <div className="mt-6">
-            <ActionItemsPanel items={actionItems} />
+            <ActionItemsPanel
+              items={actionItems}
+              storageKey="cloudtutor.actionItems.study"
+            />
           </div>
         </section>
       </div>
@@ -326,7 +327,10 @@ export default async function StudyHubPage() {
           </span>
         </div>
         <div className="mt-6">
-          <FlashcardPanel flashcards={reviewFlashcards} />
+          <FlashcardPanel
+            flashcards={reviewFlashcards}
+            storageKey="cloudtutor.flashcards.study"
+          />
         </div>
       </section>
 

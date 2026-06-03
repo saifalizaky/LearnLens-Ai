@@ -114,7 +114,7 @@ export function DashboardToolbar({
           type="button"
           onClick={() => setActivePanel((panel) => (panel === "user" ? null : "user"))}
           className="motion-button flex h-12 w-12 items-center justify-center rounded-full bg-zinc-700 text-sm font-semibold text-white hover:bg-zinc-600"
-          title="Local session"
+          title="Study workspace"
         >
           <UserRound className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -147,9 +147,9 @@ export function DashboardToolbar({
 
         {activePanel === "user" ? (
           <div className="motion-popover absolute right-0 top-14 z-30 w-72 rounded-lg border border-zinc-700 bg-[#111315] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
-            <p className="font-semibold text-white">Local Session</p>
+            <p className="font-semibold text-white">Study Workspace</p>
             <p className="mt-1 text-sm leading-6 text-zinc-400">
-              Data aplikasi dibaca dari upload dan aktivitas real di workspace lokal.
+              Data aplikasi mengikuti dokumen dan aktivitas belajar kamu.
             </p>
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-lg bg-zinc-900 p-3">

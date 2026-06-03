@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Circle } from "lucide-react";
 import type { ActionItem } from "@/server/services/learning-assets";
 
@@ -10,12 +10,45 @@ const priorityClass = {
   Low: "border-zinc-600 bg-zinc-800 text-zinc-300",
 };
 
-export function ActionItemsPanel({ items }: { items: ActionItem[] }) {
+export function ActionItemsPanel({
+  items,
+  storageKey = "cloudtutor.actionItems",
+}: {
+  items: ActionItem[];
+  storageKey?: string;
+}) {
+  const itemIds = useMemo(() => new Set(items.map((item) => item.id)), [items]);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
   const completedCount = useMemo(
     () => items.filter((item) => completed[item.id]).length,
     [completed, items],
   );
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      setCompleted(readBooleanMap(storageKey, itemIds));
+      setIsDraftLoaded(true);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [itemIds, storageKey]);
+
+  useEffect(() => {
+    if (!isDraftLoaded) {
+      return;
+    }
+
+    writeBooleanMap(storageKey, completed);
+  }, [completed, isDraftLoaded, storageKey]);
 
   if (!items.length) {
     return (
@@ -73,4 +106,66 @@ export function ActionItemsPanel({ items }: { items: ActionItem[] }) {
       </div>
     </div>
   );
+}
+
+function readBooleanMap(storageKey: string, allowedKeys: Set<string>) {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return {};
+  }
+
+  try {
+    const rawDraft = storage.getItem(storageKey);
+
+    if (!rawDraft) {
+      return {};
+    }
+
+    const parsed: unknown = JSON.parse(rawDraft);
+
+    if (!isRecord(parsed)) {
+      storage.removeItem(storageKey);
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        ([key, value]) => allowedKeys.has(key) && typeof value === "boolean",
+      ),
+    ) as Record<string, boolean>;
+  } catch {
+    storage.removeItem(storageKey);
+    return {};
+  }
+}
+
+function writeBooleanMap(storageKey: string, value: Record<string, boolean>) {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return;
+  }
+
+  try {
+    storage.setItem(storageKey, JSON.stringify(value));
+  } catch {
+    // Ignore storage quota and private browsing failures.
+  }
+}
+
+function getLocalStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

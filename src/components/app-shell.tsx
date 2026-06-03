@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-700 text-sm font-semibold text-white">
               U
             </span>
-            <span className="text-base font-medium text-zinc-300">Local Session</span>
+            <span className="text-base font-medium text-zinc-300">Study Workspace</span>
           </div>
         </div>
       </aside>

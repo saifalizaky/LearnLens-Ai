@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Loader2, RotateCw } from "lucide-react";
 import { MarkdownContent } from "@/components/markdown-content";
 import type { QuizQuestion } from "@/lib/types";
 
 const optionLabels = ["A", "B", "C", "D"];
 const quizQuestionCount = 10;
+const quizStorageVersion = 1;
+const quizStoragePrefix = "cloudtutor.quiz.";
 
 type SubmitResult = {
   correctCount: number;
   totalQuestions: number;
   score: number;
+};
+
+type QuizDraft = {
+  questions: QuizQuestion[];
+  answers: Record<string, string>;
+  result: SubmitResult | null;
+  currentIndex: number;
 };
 
 export function QuizPanel({
@@ -21,6 +30,7 @@ export function QuizPanel({
   documentId: string;
   initialQuestions: QuizQuestion[];
 }) {
+  const storageKey = `${quizStoragePrefix}${documentId}`;
   const [questions, setQuestions] = useState(initialQuestions);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<SubmitResult | null>(null);
@@ -28,6 +38,50 @@ export function QuizPanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDraftLoaded, setIsDraftLoaded] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return;
+      }
+
+      const draft = readQuizDraft(storageKey);
+
+      if (draft) {
+        setQuestions(draft.questions);
+        setAnswers(draft.answers);
+        setResult(draft.result);
+        setCurrentIndex(draft.currentIndex);
+      }
+
+      setIsDraftLoaded(true);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!isDraftLoaded) {
+      return;
+    }
+
+    if (!questions.length) {
+      removeLocalStorageItem(storageKey);
+      return;
+    }
+
+    writeQuizDraft(storageKey, {
+      questions,
+      answers,
+      result,
+      currentIndex: Math.min(currentIndex, questions.length - 1),
+    });
+  }, [answers, currentIndex, isDraftLoaded, questions, result, storageKey]);
 
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
@@ -38,7 +92,6 @@ export function QuizPanel({
   async function generateQuiz() {
     setIsGenerating(true);
     setSubmitError("");
-    setResult(null);
 
     try {
       const response = await fetch("/api/quiz/generate", {
@@ -58,6 +111,7 @@ export function QuizPanel({
       if (data.questions?.length) {
         setQuestions(data.questions);
         setAnswers({});
+        setResult(null);
         setCurrentIndex(0);
       }
     } catch (error) {
@@ -110,12 +164,16 @@ export function QuizPanel({
   }
 
   async function goNextOrSubmit() {
-    if (!currentQuestion || !selectedAnswer || result) {
+    if (!currentQuestion || !selectedAnswer) {
       return;
     }
 
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((index) => index + 1);
+      return;
+    }
+
+    if (result) {
       return;
     }
 
@@ -270,7 +328,11 @@ export function QuizPanel({
       <button
         type="button"
         onClick={goNextOrSubmit}
-        disabled={!selectedAnswer || isSubmitting || Boolean(result)}
+        disabled={
+          !selectedAnswer ||
+          isSubmitting ||
+          (Boolean(result) && currentIndex >= questions.length - 1)
+        }
         className="motion-button mt-8 inline-flex h-16 w-full items-center justify-center gap-2 rounded-lg bg-blue-500 text-lg font-semibold text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
       >
         {isSubmitting ? (
@@ -280,12 +342,145 @@ export function QuizPanel({
         )}
         {isSubmitting
           ? "Mengirim jawaban..."
-          : currentIndex < questions.length - 1
+          : result && currentIndex < questions.length - 1
+            ? "Next review"
+            : currentIndex < questions.length - 1
             ? "Next"
             : result
-              ? "Quiz selesai"
+              ? "Review selesai"
               : "Submit"}
       </button>
     </section>
   );
+}
+
+function readQuizDraft(storageKey: string): QuizDraft | null {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return null;
+  }
+
+  try {
+    const rawDraft = storage.getItem(storageKey);
+
+    if (!rawDraft) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(rawDraft);
+
+    if (!isRecord(parsed)) {
+      storage.removeItem(storageKey);
+      return null;
+    }
+
+    const questions = Array.isArray(parsed.questions)
+      ? parsed.questions.filter(isQuizQuestion)
+      : [];
+
+    if (!questions.length) {
+      storage.removeItem(storageKey);
+      return null;
+    }
+
+    const questionIds = new Set(questions.map((question) => question.id));
+    const answers: Record<string, string> = isRecord(parsed.answers)
+      ? (Object.fromEntries(
+          Object.entries(parsed.answers).filter(
+            ([questionId, answer]) =>
+              questionIds.has(questionId) && typeof answer === "string",
+          ),
+        ) as Record<string, string>)
+      : {};
+    const requestedIndex =
+      typeof parsed.currentIndex === "number" ? Math.trunc(parsed.currentIndex) : 0;
+    const currentIndex = Math.min(
+      Math.max(requestedIndex, 0),
+      questions.length - 1,
+    );
+    const result = isSubmitResult(parsed.result) ? parsed.result : null;
+
+    return {
+      questions,
+      answers,
+      result,
+      currentIndex,
+    };
+  } catch {
+    storage.removeItem(storageKey);
+    return null;
+  }
+}
+
+function writeQuizDraft(storageKey: string, draft: QuizDraft) {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return;
+  }
+
+  try {
+    storage.setItem(
+      storageKey,
+      JSON.stringify({
+        version: quizStorageVersion,
+        updatedAt: new Date().toISOString(),
+        ...draft,
+      }),
+    );
+  } catch {
+    // Ignore storage quota and private browsing failures.
+  }
+}
+
+function removeLocalStorageItem(storageKey: string) {
+  const storage = getLocalStorage();
+
+  if (!storage) {
+    return;
+  }
+
+  try {
+    storage.removeItem(storageKey);
+  } catch {
+    // Ignore private browsing failures.
+  }
+}
+
+function getLocalStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function isQuizQuestion(value: unknown): value is QuizQuestion {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.question === "string" &&
+    Array.isArray(value.options) &&
+    value.options.every((option) => typeof option === "string") &&
+    typeof value.correctAnswer === "string" &&
+    typeof value.explanation === "string"
+  );
+}
+
+function isSubmitResult(value: unknown): value is SubmitResult {
+  return (
+    isRecord(value) &&
+    typeof value.correctCount === "number" &&
+    typeof value.totalQuestions === "number" &&
+    typeof value.score === "number"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

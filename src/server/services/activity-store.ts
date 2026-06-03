@@ -98,7 +98,16 @@ export async function getRecentRealActivities(
   sessionId: string,
   documents: CloudDocument[],
 ) {
-  const activities = (await getActivities(sessionId)).filter(
+  const activities = await getActivities(sessionId);
+
+  return deriveRecentRealActivities(documents, activities);
+}
+
+export function deriveRecentRealActivities(
+  documents: CloudDocument[],
+  activities: LearningActivity[],
+) {
+  const realActivities = activities.filter(
     (activity) => activity.type !== "document_uploaded",
   );
   const uploadActivities = documents.map((document) => ({
@@ -110,7 +119,7 @@ export async function getRecentRealActivities(
     createdAt: document.createdAt,
   }));
 
-  return [...activities, ...uploadActivities]
+  return [...realActivities, ...uploadActivities]
     .sort(
       (first, second) =>
         new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
@@ -123,6 +132,14 @@ export async function getLearningTrend(
   documents: CloudDocument[],
 ): Promise<LearningTrendDatum[]> {
   const activities = await getActivities(sessionId);
+
+  return deriveLearningTrend(documents, activities);
+}
+
+export function deriveLearningTrend(
+  documents: CloudDocument[],
+  activities: LearningActivity[],
+): LearningTrendDatum[] {
   const now = new Date();
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(now);

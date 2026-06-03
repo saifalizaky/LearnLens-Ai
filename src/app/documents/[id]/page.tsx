@@ -151,7 +151,10 @@ export default async function DocumentDetailPage({
             </div>
           </div>
           <div className="mt-6">
-            <ActionItemsPanel items={actionItems} />
+            <ActionItemsPanel
+              items={actionItems}
+              storageKey={`cloudtutor.actionItems.${document.id}`}
+            />
           </div>
         </section>
 
