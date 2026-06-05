@@ -227,7 +227,7 @@ export function ChatPanel({
   }
 
   return (
-    <section className="motion-card grid h-[calc(100dvh-9rem)] min-h-[640px] grid-rows-[240px_minmax(0,1fr)] overflow-hidden rounded-lg border border-zinc-700 bg-[#0b0d10] shadow-[0_24px_70px_rgba(0,0,0,0.38)] lg:h-[calc(100vh-3rem)] lg:min-h-[680px] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-none">
+    <section className="motion-card grid h-[calc(100dvh-9rem)] min-h-[640px] grid-rows-[180px_minmax(0,1fr)] overflow-hidden rounded-lg border border-zinc-700 bg-[#0b0d10] shadow-[0_24px_70px_rgba(0,0,0,0.38)] lg:h-[calc(100vh-3rem)] lg:min-h-[680px] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-none">
       <aside className="flex min-h-0 flex-col border-b border-zinc-800 bg-[#090b0d] p-4 lg:border-b-0 lg:border-r">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -367,7 +367,7 @@ export function ChatPanel({
 
         <form
           onSubmit={onSubmit}
-          className="grid shrink-0 gap-3 border-t border-zinc-800 p-4 sm:grid-cols-[1fr_auto_auto]"
+          className="grid shrink-0 grid-cols-[1fr_auto] gap-3 border-t border-zinc-800 p-4 sm:grid-cols-[1fr_auto_auto]"
         >
           <input
             value={question}
@@ -376,7 +376,7 @@ export function ChatPanel({
             className="h-14 rounded-lg border border-zinc-600 bg-[#0f1113] px-4 text-base text-white placeholder:text-zinc-500"
           />
           <div
-            className="inline-flex h-14 items-center gap-3 rounded-full border border-zinc-700 bg-[#111315] px-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+            className="hidden h-14 items-center gap-3 rounded-full border border-zinc-700 bg-[#111315] px-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:inline-flex"
             title={selectedModel.description}
           >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-blue-200">
@@ -392,7 +392,7 @@ export function ChatPanel({
           <button
             type="submit"
             disabled={isSending}
-            className="motion-button inline-flex h-14 min-w-14 items-center justify-center gap-2 rounded-full bg-blue-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+            className="motion-button inline-flex h-14 w-14 items-center justify-center gap-2 rounded-full bg-blue-500 text-sm font-semibold text-white transition-colors hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 sm:min-w-14 sm:px-4"
             title="Kirim"
           >
             {isSending ? (
