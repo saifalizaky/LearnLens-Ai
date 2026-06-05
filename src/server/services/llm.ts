@@ -79,13 +79,24 @@ export async function generateQuiz(input: {
   title: string;
   context: string;
   count?: number;
+  excludedQuestions?: string[];
 }): Promise<QuizQuestion[]> {
   const count = input.count ?? 10;
+  const excludedQuestions = getUniqueQuestions(input.excludedQuestions ?? []);
   const prompt = [
     `Buat ${count} soal pilihan ganda dari dokumen berikut.`,
     "Balas sebagai JSON array valid.",
     'Skema item: {"id":"quiz-1","question":"...","options":["..."],"correctAnswer":"...","explanation":"..."}.',
     "Pastikan correctAnswer sama persis dengan salah satu options.",
+    "Buat pertanyaan baru yang menguji konsep berbeda, bukan sekadar mengubah urutan kata.",
+    ...(excludedQuestions.length
+      ? [
+          "Jangan membuat soal yang sama atau terlalu mirip dengan soal yang pernah dipakai berikut.",
+          `Soal yang harus dihindari:\n${excludedQuestions
+            .map((question, index) => `${index + 1}. ${question}`)
+            .join("\n")}`,
+        ]
+      : []),
     `Judul: ${input.title}`,
     `Dokumen: ${limitContext(input.context)}`,
   ].join("\n\n");
@@ -94,25 +105,34 @@ export async function generateQuiz(input: {
     {
       role: "system",
       content:
-        "Kamu adalah pembuat quiz cloud computing. Buat soal yang relevan dan tidak keluar dari dokumen.",
+        "Kamu adalah pembuat quiz cloud computing. Buat soal yang relevan, tidak keluar dari dokumen, dan tidak mengulang soal lama.",
     },
     { role: "user", content: prompt },
-  ]);
+  ], undefined, { temperature: 0.45 });
 
   if (!content) {
-    return buildFallbackQuiz(input, count);
+    return buildFallbackQuiz(input, count, excludedQuestions);
   }
 
   const parsedQuestions = parseJson<QuizQuestion[]>(content);
 
   if (!parsedQuestions?.length) {
-    return buildFallbackQuiz(input, count);
+    return buildFallbackQuiz(input, count, excludedQuestions);
   }
 
-  return normalizeQuizQuestions(parsedQuestions, buildFallbackQuiz(input, count), count);
+  return normalizeQuizQuestions(
+    parsedQuestions,
+    buildFallbackQuiz(input, count, excludedQuestions),
+    count,
+    excludedQuestions,
+  );
 }
 
-async function callDashScope(messages: ChatCompletionMessage[], modelOverride?: string) {
+async function callDashScope(
+  messages: ChatCompletionMessage[],
+  modelOverride?: string,
+  options?: { temperature?: number },
+) {
   const apiKey = process.env.DASHSCOPE_API_KEY;
   const baseUrl =
     process.env.DASHSCOPE_BASE_URL ??
@@ -133,7 +153,7 @@ async function callDashScope(messages: ChatCompletionMessage[], modelOverride?: 
       body: JSON.stringify({
         model,
         messages,
-        temperature: 0.2,
+        temperature: options?.temperature ?? 0.2,
       }),
     });
 
@@ -237,17 +257,23 @@ function buildFallbackQuiz(
     context: string;
   },
   count: number,
+  excludedQuestions: string[] = [],
 ): QuizQuestion[] {
-  const sentences = getSentences(input.context).slice(0, Math.max(count, 4));
+  const sentences = getSentences(input.context)
+    .filter((sentence) =>
+      !isDuplicateQuestion(
+        `Pernyataan mana yang paling sesuai dengan poin ini: ${sentence}`,
+        excludedQuestions,
+      ),
+    )
+    .slice(0, Math.max(count, 4));
 
-  return Array.from({ length: count }, (_, index) => {
-    const correctAnswer =
-      sentences[index % Math.max(sentences.length, 1)] ??
-      `Dokumen ${input.title} belum memiliki teks yang cukup untuk membuat opsi.`;
+  return sentences.slice(0, count).map((sentence, index) => {
+    const correctAnswer = sentence;
 
     return {
       id: `quiz-${index + 1}`,
-      question: `Pernyataan mana yang paling sesuai dengan isi dokumen "${input.title}"?`,
+      question: `Pernyataan mana yang paling sesuai dengan poin ${index + 1} dari dokumen "${input.title}"?`,
       options: shuffleOptions([
         correctAnswer,
         "Informasi tersebut tidak disebutkan sebagai bagian utama dokumen.",
@@ -264,12 +290,92 @@ function normalizeQuizQuestions(
   questions: QuizQuestion[],
   fallbackQuestions: QuizQuestion[],
   count: number,
+  excludedQuestions: string[] = [],
 ) {
-  return [...questions, ...fallbackQuestions].slice(0, count).map((question, index) => ({
+  const seenQuestions = [...excludedQuestions];
+  const distinctQuestions: QuizQuestion[] = [];
+
+  for (const question of [...questions, ...fallbackQuestions]) {
+    if (
+      !question.question ||
+      question.options.length < 2 ||
+      !question.options.includes(question.correctAnswer) ||
+      isDuplicateQuestion(question.question, seenQuestions)
+    ) {
+      continue;
+    }
+
+    distinctQuestions.push(question);
+    seenQuestions.push(question.question);
+
+    if (distinctQuestions.length >= count) {
+      break;
+    }
+  }
+
+  return distinctQuestions.map((question, index) => ({
     ...question,
     id: question.id || `quiz-${index + 1}`,
     options: question.options.slice(0, 4),
   }));
+}
+
+function getUniqueQuestions(questions: string[]) {
+  const seen = new Set<string>();
+  const uniqueQuestions: string[] = [];
+
+  for (const question of questions) {
+    const normalizedQuestion = normalizeQuestion(question);
+
+    if (!normalizedQuestion || seen.has(normalizedQuestion)) {
+      continue;
+    }
+
+    seen.add(normalizedQuestion);
+    uniqueQuestions.push(question.trim());
+  }
+
+  return uniqueQuestions.slice(0, 80);
+}
+
+function isDuplicateQuestion(question: string, previousQuestions: string[]) {
+  return previousQuestions.some((previousQuestion) => {
+    const normalizedQuestion = normalizeQuestion(question);
+    const normalizedPreviousQuestion = normalizeQuestion(previousQuestion);
+
+    return (
+      normalizedQuestion === normalizedPreviousQuestion ||
+      getQuestionSimilarity(normalizedQuestion, normalizedPreviousQuestion) >= 0.82
+    );
+  });
+}
+
+function getQuestionSimilarity(firstQuestion: string, secondQuestion: string) {
+  const firstTokens = new Set(getQuestionTokens(firstQuestion));
+  const secondTokens = new Set(getQuestionTokens(secondQuestion));
+
+  if (!firstTokens.size || !secondTokens.size) {
+    return 0;
+  }
+
+  const intersectionSize = [...firstTokens].filter((token) =>
+    secondTokens.has(token),
+  ).length;
+  const unionSize = new Set([...firstTokens, ...secondTokens]).size;
+
+  return intersectionSize / unionSize;
+}
+
+function getQuestionTokens(question: string) {
+  return question.split(" ").filter((token) => token.length > 3);
+}
+
+function normalizeQuestion(question: string) {
+  return question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getSentences(text: string) {

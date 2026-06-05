@@ -11,6 +11,7 @@ export const preferredRegion = "sin1";
 const quizRequestSchema = z.object({
   documentId: z.string().min(1),
   count: z.number().int().min(1).max(10).optional(),
+  excludedQuestions: z.array(z.string().trim().min(1).max(500)).max(80).optional(),
 });
 
 export async function POST(request: Request) {
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     title: document.title,
     context: document.extractedText,
     count: parsed.data.count,
+    excludedQuestions: parsed.data.excludedQuestions,
   });
 
   await recordActivity(sessionId, {

@@ -30,6 +30,34 @@ textarea {
   color: #050607;
 }
 
+* {
+  scrollbar-color: #171a1f #050607;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #050607;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #171a1f;
+  border: 2px solid #050607;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #262b33;
+}
+
+*::-webkit-scrollbar-corner {
+  background: #050607;
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;

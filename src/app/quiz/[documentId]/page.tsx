@@ -20,11 +20,8 @@ export default async function QuizPage({
   }
 
   return (
-    <div className="page-enter flex min-h-[calc(100vh-3rem)] items-center py-4">
-      <QuizPanel
-        documentId={document.id}
-        initialQuestions={[]}
-      />
+    <div className="page-enter py-4">
+      <QuizPanel documentId={document.id} initialQuestions={[]} />
     </div>
   );
 }
