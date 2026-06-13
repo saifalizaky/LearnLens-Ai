@@ -138,10 +138,6 @@ export function Landing3DPage() {
               <h2 className="mt-3 text-3xl font-semibold tracking-normal text-white sm:text-5xl">
                 Dari PDF ke insight belajar dalam satu alur.
               </h2>
-              <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-                Scroll ini memperlihatkan dashboard preview masuk ke layar dengan
-                efek 3D sebelum kamu lanjut ke ruang kerja utama.
-              </p>
               <Link
                 href="/dashboard"
                 className="motion-button mt-5 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-zinc-950 hover:bg-blue-100"
